@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0d12" />
+<title>VJ STUDIO のしくみ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Noto+Sans+JP:wght@400;700;900&family=Zen+Maru+Gothic:wght@500;900&family=Shippori+Mincho:wght@600;800&family=DotGothic16&family=Dela+Gothic+One&family=Mochiy+Pop+One&family=Yusei+Magic&family=Orbitron:wght@600;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/src/about/about.css" />
+</head>
+<body>
+<header class="ab-top">
+  <a class="logo" href="./"><span class="logo-mark">✦</span>VJ<b>STUDIO</b></a>
+  <nav>
+    <a data-t="t46" href="#listen">音を聴く</a><a data-t="t47" href="#draw">映像</a><a data-t="t48" href="#scenes">構成</a><a data-t="t49" href="#alife">人工生命</a><a data-t="t50" href="#export">書き出し</a>
+  </nav>
+  <button class="btn-lang" data-lang-toggle data-no-i18n>English</button>
+  <a data-t="t51" class="btn-back" href="./">アプリを開く</a>
+</header>
+
+<main class="ab">
+  <section class="hero">
+    <canvas id="hero"></canvas>
+    <div class="hero-txt">
+      <div class="kicker">ABOUT</div>
+      <h1 data-t="t1">VJ STUDIO のしくみ</h1>
+      <p data-t="t24">VJ STUDIO は、曲を読み込むだけで音に合わせて動く映像を作るアプリです。<br>
+      <b>AI（機械学習モデル）は一切使っていません。</b>信号処理と手続き的な映像生成、そして人工生命のシミュレーションを組み合わせて動かしています。<br>
+      計算はすべてあなたのブラウザ内で完結するため、曲や画像が外部へ送信されることはありません。</p>
+      <p data-t="t25" class="note" id="demo-note">このページのグラフと映像は、ページ内で合成したデモ曲（174 BPM のリキッド DnB 風、96 秒。音は鳴りません）に、アプリと同じプログラムを実際に走らせて描いています。</p>
+      <label class="try"><span data-t="t53">🎵 自分の曲で描き直す</span> <input type="file" id="tryfile" accept="audio/*" /></label>
+    </div>
+  </section>
+
+  <div data-t="t45" class="loading" id="loading">解析中…</div>
+
+  <section id="listen">
+    <h2 data-t="t2"><span class="num">01</span>音を聴く</h2>
+    <p data-t="t26">まず曲を 1 秒間に 100 回、短い区間に切り分けます。それぞれの区間を高速フーリエ変換（FFT）にかけ、どの高さの音がどれくらい鳴っているかを解析します。結果は 8 つの帯域（20 Hz の重低音から 11 kHz の高音まで）と、表示用の 32 本のスペクトラムにまとめます。音量（RMS）と音の明るさ（スペクトル重心）も、この段階で一緒に求めます。</p>
+    <figure><canvas id="g-bands" class="g tall"></canvas><figcaption data-t="t13">上：音量の変化。下：8 帯域のエネルギー（下が低音、上が高音）。背景の色は、あとで検出する「展開」を表しています。</figcaption></figure>
+
+    <h3 data-t="t7">打点を見つける</h3>
+    <p data-t="t27">音が「鳴った瞬間」は、スペクトルが急増したところに現れます。直前のフレームとの差のうち、増えた分だけを足し合わせた値（スペクトル・フラックス）を帯域ごとに計算します。低音域の打点はキック、中域はスネア、高域はハイハットに対応します。周りの平均より十分大きい山だけを拾い、少しずつ減衰する「エンベロープ」に変換します。これが映像の動き（キックで弾む、スネアで光る など）の元になります。</p>
+    <figure><canvas id="g-onset" class="g"></canvas><figcaption data-t="t14">最初のドロップから 8 秒間。灰色はオンセット強度、<span class="c-kick">■キック</span><span class="c-snare">■スネア</span><span class="c-hat">■ハット</span>。縦線は追跡したビート（太い線は小節の頭）。</figcaption></figure>
+
+    <h3 data-t="t8">テンポを決める</h3>
+    <p data-t="t28">オンセット強度を少しずつずらしながら、元の曲線と重ね合わせます（自己相関）。ビートの周期だけずらしたときに、山と山がきれいに重なります。半拍や 2 拍の候補に惑わされないよう、2 倍と 4 倍の周期の重なりも足し合わせます（倍音補強）。さらに、極端なテンポに偏らないよう、120 BPM を中心にゆるやかな「事前分布」を掛け合わせ、最もスコアの高いテンポを採用します。</p>
+    <figure><canvas id="g-tempo" class="g"></canvas><figcaption data-t="t15">テンポ候補ごとのスコア。ピンクの線が採用したテンポ、黄色の点線はその 2 倍（または半分）を示します。</figcaption></figure>
+    <p data-t="t29">リキッド DnB のようにスネアが 2 拍目と 4 拍目に来るハーフタイム感の強い曲では、本来の半分のテンポ（174 なら 87）のほうが自己相関で強く出ることがあります。このデモ曲でも実際にそうなっています。どちらを本来のテンポと捉えるかは、聴き手の感じ方によっても変わります。そこでアプリの「曲」タブには <b>÷2 ／ ×2</b> の補正ボタンを用意しました。押すと、ビートの追跡と展開の判定がやり直されます。</p>
+
+    <h3 data-t="t9">ビートを追いかける</h3>
+    <p data-t="t30">実際の曲（特に生演奏や Suno などで作った曲）は、テンポが少しずつ揺れます。そこで、Ellis（2007）の動的計画法によるビート追跡を使います。これは librosa でも採用されている手法です。条件は 2 つあります。<b>「ビートの位置ではオンセットが強いこと」</b>と<b>「ビートの間隔はテンポの周期から大きく外れないこと」</b>です。この 2 つの得点が最大になるビートの並びを、曲全体で一度に求めます。固定の格子ではないため、テンポの揺れにも柔軟についていけます。歌詞の進行や小節の区切りは、すべてこの「追跡したビート」が基準です。</p>
+    <div data-t="t44" class="formula">ビート列 b₁…bₙ の得点 ＝ Σ オンセット(bᵢ) − α · Σ ( log( (bᵢ − bᵢ₋₁) ／ 周期 ) )²</div>
+
+    <h3 data-t="t10">展開を読む</h3>
+    <p data-t="t31">4 小節ずつのフレーズごとに、音量と低音の量を平均します。曲全体の中で相対的に大きいフレーズを「ドロップ」、小さいフレーズを「イントロ／ブレイク」と判定します。ドロップの直前で盛り上がっていくフレーズは「ビルド」、最後のドロップより後は「アウトロ」です。ビルドの進み具合と、ドロップに入った瞬間の衝撃（dropHit）も、映像を動かす信号として使います。</p>
+    <figure><canvas id="g-struct" class="g"></canvas><figcaption data-t="t16"><span class="c-e">― 音量</span> <span class="c-b">― ビルド</span> <span class="c-d">― ドロップ</span>。帯の色は <span class="s0">■イントロ・ブレイク</span><span class="s1">■ビルド</span><span class="s2">■ドロップ</span><span class="s3">■アウトロ</span>。</figcaption></figure>
+  </section>
+
+  <section id="draw">
+    <h2 data-t="t3"><span class="num">02</span>映像を描く</h2>
+    <p data-t="t32">68 種類のテーマは、それぞれ GPU で動く小さなプログラム（GLSL シェーダー）で書かれています。どれも<b>「時刻・その瞬間の音の特徴・シード値」だけで絵が決まる純粋な関数</b>になっており、乱数も時刻から生成します。そのため、プレビューで見た映像と 1 コマずつ書き出した MP4 は、同じ時刻ならまったく同じ絵になります。描いた映像には、光のにじみ（ブルーム）、横方向の光の筋、色ずれ、キックでのズームを重ねます。最後に、アイコン・スペアナ・歌詞・テロップなどの HUD を重ねて仕上げます。</p>
+    <figure><div class="gallery" id="gallery"></div><figcaption data-t="t17">全テーマの静止画。いまこのページで、デモ曲の最初のドロップの瞬間を実際に描画しています。</figcaption></figure>
+  </section>
+
+  <section id="scenes">
+    <h2 data-t="t4"><span class="num">03</span>構成を組む</h2>
+    <p data-t="t33">曲の展開ごとにテーマを切り替えます。長い展開は 8〜16 小節ごとに区切り、切り替えの位置は追跡したビートの小節の頭にそろえます。各テーマには「静か〜激しい」の度合いが設定されており、ドロップには激しいテーマ、イントロやブレイクには静かなテーマが選ばれやすくなっています。隣り合うシーンに同じテーマは配置しません。切り替え方（カット・クロスフェード・フラッシュ・ズーム・グリッチ・ワイプ）も展開に合わせて選びます。どのシーンも、あとから自分で差し替えたり固定したりできます。</p>
+    <figure><canvas id="g-scenes" class="g short"></canvas><figcaption data-t="t18">デモ曲で自動的に組まれたシーン構成。色が赤いほど激しいテーマです。</figcaption></figure>
+    <h3 data-t="t11">スロットマシン</h3>
+    <p data-t="t34">スロットのリールは「ムード」「テーマ」「カラー」「素材」「レイアウト」「フォント」「メーター」「エフェクト」「テロップ」の 9 つです。ムードは、曲のテンポ・明るさ・低音の量・ドロップの強さから重み付きで抽選します。レイアウトは、要素を箱として置いたうえで箱どうしが反発し合うように少しずつ動かし、重ならない位置に落ち着かせます。</p>
+  </section>
+
+  <section id="alife">
+    <h2 data-t="t5"><span class="num">04</span>スーパースロット ― 人工生命</h2>
+    <p data-t="t35">スーパースロットでは、映像の要素を<b>生き物</b>として扱います。生き物になるのは、テーマと写真・動画です。マスクと画面全体のエフェクトは、死なない「器官」として加わります。何が画面に出るかは誰も決めません。生き物どうしの関係と曲との相互作用から、映像が<b>創発</b>します。</p>
+    <div class="cards">
+      <div class="card"><b data-t="t54">🧬 遺伝子</b><p data-t="t36">どの音を「聴く」か（キック・スネア・ハット・音量・低音・中音・高音・ビルド・ドロップへの 9 つの感度）、反応する閾値、反応の速さ、寿命、子を産むのに必要なエネルギー。テーマなら好きな激しさ。そして見た目（合成モード、フォント、色、動き方、切り抜き）を持ちます。耳には合計の上限があるため、何かを強く聴けばほかは聴こえなくなります。その結果、<b>専門家</b>と<b>なんでも屋</b>が生まれます。</p></div>
+      <div class="card"><b data-t="t55">🍙 代謝</b><p data-t="t37">曲の音が<b>エサ</b>です。たとえばキックが鳴ると、キックを聴いている仲間同士で感度に応じてエサを分け合います（ニッチ競争）。画面に強く出ているとエネルギーを多く消費します。エネルギーが尽きると餓死し、寿命が来ると老衰で死にます。</p></div>
+      <div class="card"><b data-t="t56">🐣 繁殖</b><p data-t="t38">エネルギーが十分にたまると分裂します。子は親のエネルギーの半分と、<b>突然変異</b>した遺伝子を受け継ぎます。強く結びついた同種の相手がいれば、遺伝子を<b>交叉</b>させます。数が満員のときは、いちばん弱い個体を押しのけます。テーマの子は、好みの激しさが変異した結果、<b>別のテーマへ種分化</b>することもあります。</p></div>
+      <div class="card"><b data-t="t57">☄️ 大量絶滅</b><p data-t="t39">ドロップのたびに、画面を支配していたテーマと、写真の一部が一斉に死にます。生き残ったものにはエサがどっと与えられ、空いたニッチを子孫が埋めます。</p></div>
+      <div class="card"><b data-t="t58">🕸️ ネットワーク</b><p data-t="t40">生き物どうしは、興奮と抑制のリンクでつながっています。リンクは親から受け継がれます。一緒に光るもの同士は結びつきが強まり（ヘッブ学習）、ときどき勝手に張り替わります。画面に何が見えるかは、このネットワークの活性で決まります。位置も、仲間は引き合い、ライバルは反発し、キックで外へ吹き飛ぶ、という力学で決まります。</p></div>
+      <div class="card"><b data-t="t59">⏳ 不可逆</b><p data-t="t41">死んだ個体は二度と戻りません。突然変異は積み重なり、時間とともにネットワークの「温度」（落ち着きのなさ）も上がっていきます。群れは曲に適応しながら変わり続けるため、<b>曲の終わりは始まりとは別の世界</b>になります。</p></div>
+    </div>
+    <figure><canvas id="g-eco" class="g tall"></canvas><figcaption data-t="t19">デモ曲での生態系の記録。上：種類ごとの個体数（積み上げ）、白線は平均世代、赤線は大量絶滅。下：群れ全体が「どの音を聴いているか」。展開が変わるとエサになる音が変わるため、それに合わせて群れの耳が適応していく様子が見えます。</figcaption></figure>
+    <figure><canvas id="g-tree" class="g tall"></canvas><figcaption data-t="t20">系統樹。横線が 1 個体の一生（生まれてから死ぬまで）、斜めの細線が親子のつながりです。<span class="c-kick">■テーマ</span><span class="c-snare">■写真・動画</span></figcaption></figure>
+    <figure><div class="netwrap"><canvas id="g-net" class="g net"></canvas><div class="nettime" id="nettime"></div></div><figcaption data-t="t21">ネットワークの様子（デモ曲に合わせて再生中。音は鳴りません）。丸の大きさが活性、線がリンク（点線は抑制）です。リングは誕生、赤い枠は大量絶滅を表します。</figcaption></figure>
+    <p data-t="t42">シミュレーションは、曲を読み込んだときに 1 秒あたり 20 ステップで、曲の最後まで先に計算しておきます。乱数はシード値から決まるため、同じシードなら何度でも同じ進化が起こります。シークしても書き出しても、プレビューと同じ結果になります。「🌀 カオスを回す」を押すと、新しいシードで別の進化の歴史が始まります。</p>
+  </section>
+
+  <section id="export">
+    <h2 data-t="t6"><span class="num">05</span>書き出し</h2>
+    <p data-t="t43">書き出しでは、映像を 1 コマずつ描画し、ブラウザ内蔵の WebCodecs で H.264 の映像と AAC の音声に圧縮して MP4 ファイルにまとめます。リアルタイムで録画するのではなく、時刻を 1/30 秒ずつ進めて描くため、パソコンの処理速度にかかわらずコマ落ちしません。WebCodecs が使えない環境では、画面を録画する方式に切り替えます。</p>
+    <h3 data-t="t12">参考</h3>
+    <ul class="refs">
+      <li>D. P. W. Ellis, “Beat Tracking by Dynamic Programming”, Journal of New Music Research, 2007.</li>
+      <li data-t="t22">librosa（beat_track の実装を参考にしました）</li>
+      <li>J. P. Bello et al., “A Tutorial on Onset Detection in Music Signals”, IEEE TSAP, 2005.</li>
+      <li data-t="t23">人工生命の考え方：C. Langton, T. Ray “Tierra”, K. Sims “Evolved Virtual Creatures” など</li>
+    </ul>
+  </section>
+  <footer class="ab-foot"><a data-t="t52" href="./">VJ STUDIO をひらく →</a></footer>
+</main>
+<script type="module" src="/src/about/main.ts"></script>
+</body>
+</html>

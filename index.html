@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0d0f14" />
+<title>VJ STUDIO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Noto+Sans+JP:wght@400;700;900&family=Zen+Maru+Gothic:wght@500;900&family=Shippori+Mincho:wght@600;800&family=DotGothic16&family=Dela+Gothic+One&family=Mochiy+Pop+One&family=Yusei+Magic&family=Orbitron:wght@600;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/src/ui/style.css" />
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="logo"><span class="logo-mark">✦</span>VJ<b>STUDIO</b></div>
+    <div class="songchip" id="songchip">曲が読み込まれていません</div>
+    <div class="top-spacer"></div>
+    <div class="top-actions">
+      <span class="fps" id="fps"></span>
+      <div class="undo-group"><button class="btn btn-ic" id="btn-undo" title="元に戻す (⌘Z)">↶</button><button class="btn btn-ic" id="btn-redo" title="やり直す (⇧⌘Z)">↷</button></div>
+      <button class="btn btn-ghost lang-btn" data-lang-toggle data-no-i18n>English</button>
+      <button class="btn btn-ghost" id="btn-tour" title="使い方のツアー">チュートリアル</button>
+      <button class="btn btn-ic" id="btn-keys" title="ショートカット一覧 (?)">⌨︎</button>
+      <a class="btn btn-ic" href="./about.html" target="_blank" rel="noopener" title="しくみ（About）">ⓘ</a>
+      <button class="btn btn-ghost" id="btn-reset" title="すべて消してトップページに戻る">リセット</button>
+      <button class="btn" id="btn-auto" title="スロットで丸ごと自動生成 (R)">🎲 おまかせ</button>
+      <button class="btn btn-pink" id="btn-export">書き出し</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="layers-col" id="layers" aria-label="映像の要素"></aside>
+    <section class="stage-col">
+      <div class="device">
+        <div class="device-body">
+          <div class="screen" id="screen">
+            <div class="screen-inner" id="stage"></div>
+            <div class="sel-box" id="selbox" hidden><span class="sel-label" id="sellabel"></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="transport card">
+        <button class="play" id="play" title="再生 / 停止 (Space)"><span>▶</span></button>
+        <div class="tl-wrap">
+          <canvas id="timeline"></canvas>
+        </div>
+        <div class="time" id="tlabel">0:00.0</div>
+        <button class="metro" id="metro" title="クリック音で拍を確認 (M)">♩</button>
+      </div>
+      <p class="tips">プレビューの要素はクリックで選択、ドラッグで移動、ホイール／ピンチでサイズ変更　<kbd>Space</kbd> 再生　<kbd>←</kbd><kbd>→</kbd> 小節移動　<kbd>?</kbd> ショートカット</p>
+    </section>
+
+    <section class="panel-col">
+      <div class="panel" id="panel"></div>
+    </section>
+  </main>
+</div>
+
+<div class="start" id="start">
+  <div class="landing">
+    <header class="lp-top">
+      <div class="start-logo"><span class="logo-mark">✦</span>VJ<b>STUDIO</b></div>
+      <nav>
+        <a href="#usecases">使いみち</a>
+        <a href="./about.html" target="_blank" rel="noopener">しくみ</a>
+        <button class="btn btn-ghost" id="tourgo">チュートリアル</button>
+        <button class="btn btn-ghost lang-btn" data-lang-toggle data-no-i18n>English</button>
+      </nav>
+    </header>
+
+    <section class="lp-hero">
+      <div class="lp-copy">
+        <div class="lp-kicker">FOR DTMers ・ 同人音楽</div>
+        <h1>自作曲を、<br>SNSに出せるVJ映像に。</h1>
+        <p class="lp-lead">曲を入れるだけで、音に合わせて動く映像ができます。スペアナなどのメーター、自分の写真や動画、テロップ、歌詞も自由に載せられます。DAWの画面録画の代わりに、あなただけの映像で新曲を届けましょう。</p>
+        <ul class="lp-points">
+          <li>🎲 おまかせで数秒、こだわるなら細かく作り込み</li>
+          <li>📤 YouTube・X・Instagram・TikTok 向けにMP4書き出し</li>
+          <li>🔒 AIは使わず、曲や画像はブラウザの外に出ません</li>
+        </ul>
+        <button class="btn lp-tour" id="tourgo2">▶ デモ曲でチュートリアルを見る</button>
+      </div>
+
+      <div class="start-card">
+        <div class="start-head">はじめる</div>
+        <label class="drop" id="drop">
+          <input type="file" id="songfile" accept="audio/*,image/*,video/*" multiple hidden />
+          <div class="drop-icon">♪</div>
+          <div class="drop-main">曲をドロップ <small>（必須）</small></div>
+          <div class="drop-sub">wav / mp3 / m4a / flac。Sunoのmp3なら曲名・ジャケット・歌詞も読み取ります。<br>写真や動画もまとめてここに入れてOK</div>
+          <div class="drop-file" id="songname"></div>
+        </label>
+        <div class="start-extras">
+          <label class="sx" id="avdrop">
+            <input type="file" id="avfile" accept="image/*" hidden />
+            <div class="sx-thumb" id="avthumb">◉</div>
+            <div><b>アイコン</b><span>SNSのアイコン画像（任意）</span></div>
+          </label>
+          <label class="sx" id="mdrop">
+            <input type="file" id="mfile" accept="image/*,video/*" multiple hidden />
+            <div class="sx-thumb">▣</div>
+            <div><b>写真・動画 <em id="mediacount"></em></b><span>映像に使う素材（任意・複数OK）</span></div>
+          </label>
+        </div>
+        <div class="sm-list" id="medialist"></div>
+        <button class="btn btn-pink btn-block" id="startgo" disabled>はじめる →</button>
+        <p class="start-note">曲や画像はこのブラウザの中だけで処理され、どこにも送信されません。</p>
+        <div class="loading" id="loading" hidden><div class="spinner"></div><span id="loadmsg">解析中…</span></div>
+      </div>
+    </section>
+
+    <section class="lp-how">
+      <div class="lp-step"><i>1</i><b>曲を入れる</b><p>BPM・展開（イントロ／ビルド／ドロップ）を自動で解析します。</p></div>
+      <div class="lp-step"><i>2</i><b>おまかせ or 作り込み</b><p>🎲で丸ごと自動生成。左の要素リストから歌詞・テロップ・メーターなどをすぐ編集。</p></div>
+      <div class="lp-step"><i>3</i><b>SNS向けに書き出す</b><p>投稿先を選ぶだけで、画面の形・画質・長さがそろいます。</p></div>
+    </section>
+
+    <section class="lp-uses" id="usecases">
+      <h2>こんな時に使えます</h2>
+      <div class="lp-cards">
+        <article class="lp-card">
+          <div class="lp-tag">新曲の告知</div>
+          <h3>新作をSNSで告知するときに</h3>
+          <p>完成した新曲のサビ30〜60秒に、ジャケット・曲名・「12.24 配信」のようなテロップを載せ、メーターが音に合わせて動く映像に。DAWの画面録画より、ずっと「作品」らしく届けられます。</p>
+        </article>
+        <article class="lp-card">
+          <div class="lp-tag">スケッチ・作業中</div>
+          <h3>ちょっとしたスケッチを、すぐ投稿</h3>
+          <p>作りかけのループや思いつきのフレーズも、🎲おまかせを回せば数秒で映像に。毎回ちがう組み合わせが出るので、気軽に何度でもSNSに上げられます。</p>
+        </article>
+        <article class="lp-card">
+          <div class="lp-tag">自分だけのMV</div>
+          <h3>写真や動画で、自分だけの1本を</h3>
+          <p>撮りためた写真・動画を背景やカードにして、歌詞を流し、フォント・色・エフェクトまで作り込み。テーマを使わず素材だけで作ることも。縦型にすればリールやTikTokにも。</p>
+        </article>
+      </div>
+    </section>
+
+    <footer class="lp-foot">VJ STUDIO ・ ブラウザだけで動くVJ映像ジェネレーター ・ <a href="./about.html" target="_blank" rel="noopener">しくみを読む</a></footer>
+  </div>
+</div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
