@@ -20,6 +20,7 @@ import { drawEcoChart, ECO_LEGEND } from './ui/ecoChart';
 import { runTour } from './ui/tour';
 import { drawKinetic, KINETIC, KINETIC_IDS } from './core/kinetic';
 import { demoSongFile } from './core/demo';
+import { decodeAudioFile } from './core/decode';
 import { addTranslations, applyLang, isEn, onLangChange, toggleLang } from './ui/i18n';
 import { bind, color, confirmModal, esc, fileDrop, h, hint, posPad, refreshAll, sec, seg, select, setNotify, slider, text, toast, toggle } from './ui/controls';
 import { Timeline } from './ui/timeline';
@@ -36,7 +37,7 @@ const nextFrame = () => new Promise((r) => requestAnimationFrame(() => requestAn
 async function analyzeSong(blob: Blob, name: string, msg: (s: string) => void): Promise<Song> {
   msg('デコード中…');
   await nextFrame();
-  const buffer = await new AudioContext().decodeAudioData(await blob.arrayBuffer());
+  const buffer = await decodeAudioFile(await blob.arrayBuffer());
   msg('解析中…（BPM・展開・帯域）');
   await nextFrame();
   const off = new OfflineAudioContext(1, Math.ceil(buffer.duration * 22050), 22050);
@@ -103,7 +104,7 @@ async function loadSong(blob: Blob, name: string) {
 }
 
 {
-  const isAudio = (f: File) => f.type.startsWith('audio/') || /\.(mp3|wav|m4a|aac|flac|ogg|aiff?)$/i.test(f.name);
+  const isAudio = (f: File) => f.type.startsWith('audio/') || /\.(mp3|wav|m4a|aac|flac|ogg|opus|aiff?)$/i.test(f.name);
   const isVisual = (f: File) => f.type.startsWith('image/') || f.type.startsWith('video/');
   const songName = $('songname'), go = $<HTMLButtonElement>('startgo');
   const avThumb = $('avthumb'), mediaList = $('medialist');
@@ -830,7 +831,7 @@ async function startEditor(first: Song, initial: Extras) {
     dbl.onclick = () => applyBpm(Math.round(env.analysis.bpm * 2 * 100) / 100);
     ap.onclick = () => { const v = +bin.value; if (v > 40 && v < 300) applyBpm(v); };
     p.append(bpmRow, hint('DnBなどで半分/倍のテンポで検出されたときに使います。ビートや展開の判定が更新されます。'));
-    p.append(sec('別の曲に変更'), fileDrop('🎵 曲をドロップ / クリックで選択', 'audio/*', false, ([f]) => loadSong(f, f.name)));
+    p.append(sec('別の曲に変更'), fileDrop('🎵 曲をドロップ / クリックで選択', 'audio/*,.mp3,.m4a,.mp4,.aac,.wav,.flac,.ogg,.opus,.aif,.aiff', false, ([f]) => loadSong(f, f.name)));
     p.append(sec('プレビュー画質'), seg(null, [['360', '軽い'], ['540', '標準'], ['720', '高'], ['1080', '最高']], () => String(view.q), (v) => {
       view.q = +v; applyView(); rebuildOutput(); rebuildTemplate();
     }), hint('重いときは「軽い」に。書き出しの画質には影響しません。'));

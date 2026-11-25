@@ -10,6 +10,7 @@ import { planScenes, THEME_ENERGY } from '../app/scenes';
 import { chaosState, chaosWeb, planChaos, type ChaosPlan } from '../app/chaos';
 import { drawEcoChart } from '../ui/ecoChart';
 import { demoSong } from '../core/demo';
+import { decodeAudioFile } from '../core/decode';
 import { applyLang, isEn, onLangChange, toggleLang } from '../ui/i18n';
 import { ABOUT_EN } from './en';
 
@@ -21,8 +22,7 @@ const SEC_COL = ['#4fb3ff', '#ffd23f', '#ff5fa2', '#9b7bff'];
 
 async function decodeFile(f: File): Promise<Float32Array> {
   const buf = await f.arrayBuffer();
-  const probe = new OfflineAudioContext(1, 1, SR);
-  const ab = await probe.decodeAudioData(buf);
+  const ab = await decodeAudioFile(buf);
   const off = new OfflineAudioContext(1, Math.ceil(ab.duration * SR), SR);
   const src = off.createBufferSource(); src.buffer = ab; src.connect(off.destination); src.start();
   return (await off.startRendering()).getChannelData(0); // offline: rendered to memory, not to the speakers
