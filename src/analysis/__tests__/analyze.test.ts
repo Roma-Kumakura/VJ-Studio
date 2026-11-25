@@ -253,3 +253,11 @@ describe('chaos network', () => {
     expect(assetsOn).toBeGreaterThan(0);
   });
 });
+
+describe('lyrics parsing', () => {
+  it('skips Suno stage directions but keeps sung lines and Japanese backing vocals', () => {
+    const { blocks } = parseBlocks('[Intro]\n(Emotional piano arpeggio)\n[Verse]\nよあけまえの ほーむに たつ\n(ああ)\n(Filtered breakbeat fade in)');
+    const lines = blocks.flatMap((b) => b.lines);
+    expect(lines).toEqual(['よあけまえの ほーむに たつ', '(ああ)']);
+  });
+});

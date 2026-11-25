@@ -60,6 +60,8 @@ export function parseBlocks(text: string): { blocks: Block[]; lrc: LyricLine[] |
     if (m) { if (cur.lines.length || cur.tag) blocks.push(cur); cur = { tag: m[1], lines: [] }; continue; }
     const s = l.trim();
     if (!s) { if (cur.lines.length) { blocks.push(cur); cur = { tag: '', lines: [] }; } continue; }
+    // Suno stage directions such as "(Emotional piano arpeggio)" are not sung — skip them (Japanese backing vocals in parentheses stay)
+    if (/^[(（][^)）]*[)）]$/.test(s) && !/[ぁ-んァ-ヶ一-龯]/.test(s)) continue;
     cur.lines.push(s);
   }
   if (cur.lines.length || cur.tag) blocks.push(cur);
